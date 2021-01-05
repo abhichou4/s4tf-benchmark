@@ -1,8 +1,9 @@
 import TensorFlow
 import Benchmark
-
 import Datasets
 import Models
+
+let device: Device = Device(kind: .GPU, ordinal: 0)
 
 let remoteBaseDirectory = "https://storage.googleapis.com/cvdf-datasets/mnist/"
 let localBaseDirectory = "../data/mnist/"
@@ -23,13 +24,13 @@ for filename in filenames {
 
 benchmark("Loading MNIST Dataset\t") {
     let _: Tensor<Float> = loadMNISTDataset(from: localBaseDirectory + filenames[0], 
-                                                isTraining: true, isLabel: false, toFlatten: true)
+                                                isTraining: true, isLabel: false, toFlatten: true, device: device)
 }
 
 let trainingImages: Tensor<Float> = loadMNISTDataset(from: localBaseDirectory + filenames[0], 
-                                                    isTraining: true, isLabel: false, toFlatten: true) / 255.0
+                                                    isTraining: true, isLabel: false, toFlatten: true, device: device) / 255.0
 let trainingLabels: Tensor<Int32> = loadMNISTDataset(from: localBaseDirectory + filenames[1],
-                                                    isTraining: true, isLabel: true, toFlatten: true)
+                                                    isTraining: true, isLabel: true, toFlatten: true, device: device)
 
 let batchSize = 32
 
@@ -56,27 +57,49 @@ let firstTrainFeatures = firstTrainBatch.images
 let firstTrainLabels = firstTrainBatch.labels
 
 var model = DenseModel()
-
-benchmark("Forward Pass\t") {
-    let _ = model(firstTrainFeatures)
-}
-
 let optimizer = SGD(for: model, learningRate: 0.01)
-
-benchmark("Forward and Backward Pass (Gradients)\t") {
-    let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
-        let logits = model(firstTrainFeatures)
-        return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
-    }
+let (_, grads) = valueWithGradient(at: model) { model -> Tensor<Float> in
+    let logits = model(firstTrainFeatures)
+    return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
 }
 
-let (_, grads) = valueWithGradient(at: model) { model -> Tensor<Float> in
-        let logits = model(firstTrainFeatures)
-        return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
+withDevice(named: "/job:localhost/replica:0/task:0/device:CPU:0", perform: {
+    () -> Void in 
+    
+    benchmark("Forward Pass\t") {
+        let _ = model(firstTrainFeatures)
     }
 
-benchmark("Update Weights\t") {
-    optimizer.update(&model, along: grads)
-}  
+    benchmark("Forward and Backward Pass (Gradients)\t") {
+        let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
+            let logits = model(firstTrainFeatures)
+            return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
+        }
+    }
+
+    benchmark("Update Weights\t") {
+        optimizer.update(&model, along: grads)
+    }
+})
+
+withDevice(named: "/job:localhost/replica:0/task:0/device:GPU:0", perform: {
+    () -> Void in 
+    
+    benchmark("Forward Pass\t") {
+        let _ = model(firstTrainFeatures)
+    }
+
+    benchmark("Forward and Backward Pass (Gradients)\t") {
+        let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
+            let logits = model(firstTrainFeatures)
+            return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
+        }
+    }
+
+    benchmark("Update Weights\t") {
+        optimizer.update(&model, along: grads)
+    }
+})
+
 
 Benchmark.main()
