@@ -8,6 +8,6 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .target(name: "Models", path: "Sources"),
+        .target(name: "Models", path: "Swift4TF"),
     ]
 )

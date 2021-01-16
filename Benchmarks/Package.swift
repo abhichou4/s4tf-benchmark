@@ -15,6 +15,6 @@ let package = Package(
         .target(
             name: "Dense-MNIST", 
             dependencies: ["Datasets", "Models", "Benchmark"],
-            path: "Dense-MNIST"),
+            path: "Swift4TF/Dense-MNIST"),
     ]
 )

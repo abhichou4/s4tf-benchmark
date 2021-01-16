@@ -62,44 +62,21 @@ let (_, grads) = valueWithGradient(at: model) { model -> Tensor<Float> in
     let logits = model(firstTrainFeatures)
     return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
 }
-
-withDevice(named: "/job:localhost/replica:0/task:0/device:CPU:0", perform: {
-    () -> Void in 
     
-    benchmark("Forward Pass\t") {
-        let _ = model(firstTrainFeatures)
-    }
+benchmark("Forward Pass\t") {
+    let _ = model(firstTrainFeatures)
+}
 
-    benchmark("Forward and Backward Pass (Gradients)\t") {
-        let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
-            let logits = model(firstTrainFeatures)
-            return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
-        }
+benchmark("Forward and Backward Pass (Gradients)\t") {
+    let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
+        let logits = model(firstTrainFeatures)
+        return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
     }
+}
 
-    benchmark("Update Weights\t") {
-        optimizer.update(&model, along: grads)
-    }
-})
-
-withDevice(named: "/job:localhost/replica:0/task:0/device:GPU:0", perform: {
-    () -> Void in 
-    
-    benchmark("Forward Pass\t") {
-        let _ = model(firstTrainFeatures)
-    }
-
-    benchmark("Forward and Backward Pass (Gradients)\t") {
-        let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
-            let logits = model(firstTrainFeatures)
-            return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
-        }
-    }
-
-    benchmark("Update Weights\t") {
-        optimizer.update(&model, along: grads)
-    }
-})
+benchmark("Update Weights\t") {
+    optimizer.update(&model, along: grads)
+}
 
 
 Benchmark.main()
