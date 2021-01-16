@@ -15,4 +15,4 @@ $ swift run -c release Dense-MNIST --help
 ```
 ## Status
 - [ ] Keras+TF and PyTorch Models
-- [ ] Option to run on CPU only 
+- [ ] Containerize Benchmarks
