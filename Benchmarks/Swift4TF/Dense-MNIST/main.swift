@@ -22,10 +22,9 @@ for filename in filenames {
         to: localBaseDirectory)
 }
 
-benchmark("Loading MNIST Dataset\t") {
-    let _: Tensor<Float> = loadMNISTDataset(from: localBaseDirectory + filenames[0], 
-                                                isTraining: true, isLabel: false, toFlatten: true, device: device)
-}
+
+let _: Tensor<Float> = loadMNISTDataset(from: localBaseDirectory + filenames[0], 
+                                            isTraining: true, isLabel: false, toFlatten: true, device: device)
 
 let trainingImages: Tensor<Float> = loadMNISTDataset(from: localBaseDirectory + filenames[0], 
                                                     isTraining: true, isLabel: false, toFlatten: true, device: device) / 255.0
@@ -67,16 +66,38 @@ benchmark("Forward Pass\t") {
     let _ = model(firstTrainFeatures)
 }
 
-benchmark("Forward and Backward Pass (Gradients)\t") {
+benchmark("One Update step\t") {
     let (_, _) = valueWithGradient(at: model) { model -> Tensor<Float> in
         let logits = model(firstTrainFeatures)
         return softmaxCrossEntropy(logits: logits, labels: firstTrainLabels)
     }
-}
-
-benchmark("Update Weights\t") {
     optimizer.update(&model, along: grads)
 }
 
+let epochCount = 200
+benchmark("Total time to train\t", settings: Iterations(1)) {
+    for (epochIndex, epoch) in trainingEpochs.prefix(epochCount).enumerated() {
+        var epochLoss: Float = 0
+        var epochAccuracy: Float = 0
+        var batchCount: Int = 0
+        for batchSamples in epoch {
+            let batch = batchSamples.collated
+            let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
+                let logits = model(batch.images)
+                return softmaxCrossEntropy(logits: logits, labels: batch.labels)
+            }
+            optimizer.update(&model, along: grad)
+
+            let logits = model(batch.images)
+            epochLoss += loss.scalarized()
+            batchCount += 1
+        }
+        epochAccuracy /= Float(batchCount)
+        epochLoss /= Float(batchCount)
+        if epochIndex+1 % 50 == 0 {
+            print("Epoch \(epochIndex): Loss: \(epochLoss)")
+        }
+    }
+}
 
 Benchmark.main()
