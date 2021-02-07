@@ -51,4 +51,4 @@ for epoch in range(num_epochs):
 training_time = timeit.timeit(setup=SETUP_CODE, stmt=TEST_CODE, number=1)
 
 print("name\ttime\n------------------------")
-print("Total time to train\t{:.7f}".format(training_time))
+print("Total time to train\t{:.7f} ns".format(training_time * 1e9))
