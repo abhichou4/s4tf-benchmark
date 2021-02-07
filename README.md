@@ -14,5 +14,5 @@ $ swift run -c release Dense-MNIST --help
 
 ```
 ## Status
-- [ ] Keras+TF and PyTorch Models
+- [x] Keras+TF and PyTorch Models
 - [ ] Containerize Benchmarks
