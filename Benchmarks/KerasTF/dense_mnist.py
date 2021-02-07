@@ -1,4 +1,5 @@
 import tensorflow as tf
+import timeit
 import sys
 sys.path.append("../..") 
 
@@ -26,11 +27,12 @@ def grad(model, inputs, targets):
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
-train_loss_results = []
-train_accuracy_results = []
+SETUP_CODE = '''
+from __main__ import model, ds_image, ds_labels, optimizer, grad
+import tensorflow as tf
+num_epochs = 200'''
 
-num_epochs = 201
-
+TEST_CODE = '''
 for epoch in range(num_epochs):
     epoch_loss_avg = tf.keras.metrics.Mean()
     epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
@@ -42,8 +44,11 @@ for epoch in range(num_epochs):
         epoch_loss_avg.update_state(loss_value)
         epoch_accuracy.update_state(y, model(x, training=True))
 
-    train_loss_results.append(epoch_loss_avg.result())
-    train_accuracy_results.append(epoch_accuracy.result())
     print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,
                                                                 epoch_loss_avg.result(),
                                                                 epoch_accuracy.result()))
+'''
+training_time = timeit.timeit(setup=SETUP_CODE, stmt=TEST_CODE, number=1)
+
+print("name\ttime\n------------------------")
+print("Total time to train\t{:.7f}".format(training_time))
